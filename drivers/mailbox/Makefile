@@ -60,3 +60,4 @@ obj-$(CONFIG_SPRD_MBOX)		+= sprd-mailbox.o
 obj-$(CONFIG_QCOM_IPCC)		+= qcom-ipcc.o
 
 obj-$(CONFIG_APPLE_MBOX)	+= apple.o
+obj-$(CONFIG_APPLE_MBOX)	+= apple-mailbox-compat-shim.o
