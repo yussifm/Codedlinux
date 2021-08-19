@@ -15,6 +15,19 @@ config BLK_DEV_NVME
 	  To compile this driver as a module, choose M here: the
 	  module will be called nvme.
 
+config BLK_DEV_NVME_APPLE
+	tristate "Apple ANS2 NVM Express block device"
+	depends on ARCH_APPLE && BLOCK
+	select NVME_CORE
+        default ARCH_APPLE
+	help
+	  The NVM Express driver is for solid state drives directly
+	  connected to the PCI or PCI Express bus.  If you know you
+	  don't have one of these, it is safe to answer N.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called nvme.
+
 config NVME_MULTIPATH
 	bool "NVMe multipath support"
 	depends on NVME_CORE
