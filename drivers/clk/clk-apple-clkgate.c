@@ -117,8 +117,9 @@ static int apple_clk_gate_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	if (of_clk_get_parent_count(node) != 1) {
-		dev_err(dev, "expected exactly one clock parent\n");
+	init.num_parents = of_clk_get_parent_count(node);
+	if (init.num_parents != 0 && init.num_parents != 1) {
+		dev_err(dev, "expected exactly zero or one clock parents\n");
 		return ret;
 	}
 
@@ -126,7 +127,6 @@ static int apple_clk_gate_probe(struct platform_device *pdev)
 	init.flags = 0;
 	init.parent_names = NULL;
 	init.parent_data = parent_data;
-	init.num_parents = 1;
 
 	ret = devm_of_clk_add_hw_provider(dev, of_clk_hw_simple_get, hw);
 	if (ret < 0)
