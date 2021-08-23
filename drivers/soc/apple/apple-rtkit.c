@@ -26,6 +26,7 @@ struct apple_rtkit {
 	struct mbox_chan *mbox_chan;
 	struct completion *boot_completion;
 	bool booted;
+	int version;
 
 	//DECLARE_WAIT_QUEUE_HEAD(wq);
 	struct wait_queue_head wq;
@@ -57,7 +58,8 @@ struct apple_rtkit {
 
 #define APPLE_RTKIT_MGMT_HELLO 1
 #define APPLE_RTKIT_MGMT_HELLO_REPLY 2
-#define APPLE_RTKIT_MGMT_HELLO_TAG GENMASK(31, 0)
+#define APPLE_RTKIT_MGMT_HELLO_MINVER GENMASK(15, 0)
+#define APPLE_RTKIT_MGMT_HELLO_MAXVER GENMASK(31, 16)
 
 #define APPLE_RTKIT_MGMT_EPMAP 8
 #define APPLE_RTKIT_MGMT_EPMAP_LAST BIT(51)
@@ -88,6 +90,9 @@ struct apple_rtkit {
 #define APPLE_RTKIT_SYSLOG_N_ENTRIES GENMASK(7, 0)
 #define APPLE_RTKIT_SYSLOG_MSG_SIZE GENMASK(31, 24)
 
+#define RTKIT_MIN_SUPPORTED_VERSION 11
+#define RTKIT_MAX_SUPPORTED_VERSION 12
+
 static void apple_rtkit_management_send(struct apple_rtkit *rtk, u8 type,
 					u64 msg)
 {
@@ -100,8 +105,27 @@ static void apple_rtkit_management_rx_hello(struct apple_rtkit *rtk, u64 msg)
 {
 	u64 reply;
 
-	reply = FIELD_PREP(APPLE_RTKIT_MGMT_HELLO_TAG,
-			   FIELD_GET(APPLE_RTKIT_MGMT_HELLO_TAG, msg));
+	int min_ver = FIELD_GET(APPLE_RTKIT_MGMT_HELLO_MINVER, msg);
+	int max_ver = FIELD_GET(APPLE_RTKIT_MGMT_HELLO_MAXVER, msg);
+	int want_ver = max(RTKIT_MAX_SUPPORTED_VERSION, max_ver);
+
+	dev_dbg(rtk->dev, "RTKit: Min ver %d, max ver %d\n", min_ver, max_ver);
+
+	if (min_ver > RTKIT_MAX_SUPPORTED_VERSION) {
+		dev_err(rtk->dev, "RTKit: Firmware min version %d is too new\n", min_ver);
+		return; // FIXME: abort boot process
+	}
+	if (max_ver < RTKIT_MIN_SUPPORTED_VERSION) {
+		dev_err(rtk->dev, "RTKit: Firmware max version %d is too old\n", max_ver);
+		return; // FIXME: abort boot process
+	}
+
+	dev_info(rtk->dev, "RTKit: Initializing (protocol version %d)\n", want_ver);
+	rtk->version = want_ver;
+
+	reply = FIELD_PREP(APPLE_RTKIT_MGMT_HELLO_MINVER, want_ver) |
+		FIELD_PREP(APPLE_RTKIT_MGMT_HELLO_MAXVER, want_ver);
+
 	apple_rtkit_management_send(rtk, APPLE_RTKIT_MGMT_HELLO_REPLY, reply);
 }
 
