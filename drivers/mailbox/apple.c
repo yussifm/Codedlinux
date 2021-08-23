@@ -291,13 +291,15 @@ static int apple_mbox_probe(struct platform_device *pdev)
 		return -ENODEV;
 
 	ret = devm_clk_bulk_get_all(dev, &mbox->clks);
-	if (ret)
+	if (ret < 0)
 		return ret;
 	mbox->num_clks = ret;
 
 	ret = clk_bulk_prepare_enable(mbox->num_clks, mbox->clks);
-	if (ret)
+	if (ret < 0) {
+		dev_err(dev, "failed to enable clocks\n");
 		return ret;
+	}
 
 	mbox->controller.dev = mbox->dev;
 	mbox->controller.num_chans = 1;
@@ -320,6 +322,8 @@ static int apple_mbox_probe(struct platform_device *pdev)
 	ret = devm_mbox_controller_register(dev, &mbox->controller);
 	if (ret)
 		goto err_clk_disable;
+
+	dev_info(dev, "registered\n");
 	return ret;
 
 err_clk_disable:

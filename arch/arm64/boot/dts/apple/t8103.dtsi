@@ -139,6 +139,13 @@
 
 			reg = <0x2 0x3b700000 0x0 0x4000>;
 
+			clk_imx: clock@1b8 {
+				clock-output-names = "imx";
+				compatible = "apple,t8103-clock-gate";
+				reg = <0x1b8>;
+				#clock-cells = <0>;
+			};
+
 			clk_sio: clock@1c0 {
 				clock-output-names = "sio";
 				compatible = "apple,t8103-clock-gate";
@@ -162,6 +169,30 @@
 				#clock-cells = <0>;
 				clocks = <&clk_uart_p>;
 			};
+
+			clk_apcie: clock@348 {
+				clock-output-names = "apcie";
+				compatible = "apple,t8103-clock-gate";
+				reg = <0x348>;
+				#clock-cells = <0>;
+				clocks = <&clk_imx>;
+			};
+
+			clk_ans: clock@3f0 {
+				clock-output-names = "ans2";
+				compatible = "apple,t8103-clock-gate";
+				reg = <0x3f0>;
+				#clock-cells = <0>;
+			};
+
+			clk_apcie_st: clock@418 {
+				clock-output-names = "apcie_st";
+				compatible = "apple,t8103-clock-gate";
+				reg = <0x418>;
+				#clock-cells = <0>;
+				clocks = <&clk_apcie>;
+			};
+			
 		};
 
 		ans: mbox@277408000 {
@@ -176,6 +207,7 @@
 			interrupt-names = "send-empty", "send-not-empty",
 				"recv-empty", "recv-not-empty";
 			#mbox-cells = <0>;
+			clocks = <&clk_ans>, <&clk_apcie_st>;
 		};
 
 		ans2_hdd: nvme@27bcc0000 {
@@ -186,6 +218,7 @@
 			interrupts = <AIC_IRQ 590 IRQ_TYPE_LEVEL_HIGH>;
 			mboxes = <&ans>;
 			mbox-names = "ans-mbox";
+			clocks = <&clk_ans>, <&clk_apcie_st>;
 		 };
 
 		smc: mbox@23e408000 {

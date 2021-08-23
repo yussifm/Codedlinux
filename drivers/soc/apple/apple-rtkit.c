@@ -514,10 +514,13 @@ int apple_rtkit_boot_wait(struct apple_rtkit *rtk)
 	int ret;
 	DECLARE_COMPLETION_ONSTACK(boot_done);
 
+	dev_dbg(rtk->dev, "RTkit: booting coprocessor\n");
+
 	ret = apple_rtkit_boot(rtk, &boot_done);
 	if (ret)
 		return ret;
 
+	dev_dbg(rtk->dev, "RTkit: waiting for boot\n");
 	wait_for_completion(&boot_done);
 	return 0;
 }
