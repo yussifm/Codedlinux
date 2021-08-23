@@ -117,6 +117,8 @@ static void apple_mbox_hw_send(struct apple_mbox *apple_mbox,
 	 */
 	dma_wmb();
 
+	dev_dbg(apple_mbox->dev, "> TX %016llx %08x\n", msg->msg0, msg->msg1);
+
 	writeq_relaxed(msg->msg0, apple_mbox->regs.a2i_send0);
 	writeq_relaxed(FIELD_PREP(APPLE_MBOX_MSG1_MSG, msg->msg1),
 		       apple_mbox->regs.a2i_send1);
@@ -137,6 +139,8 @@ static void apple_mbox_hw_recv(struct apple_mbox *apple_mbox,
 	msg->msg0 = readq_relaxed(apple_mbox->regs.i2a_recv0);
 	msg->msg1 = FIELD_GET(APPLE_MBOX_MSG1_MSG,
 			      readq_relaxed(apple_mbox->regs.i2a_recv1));
+
+	dev_dbg(apple_mbox->dev, "< RX %016llx %08x\n", msg->msg0, msg->msg1);
 
 	/*
 	 * we need a DMA barrier here since this message might be related to
