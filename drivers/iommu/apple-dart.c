@@ -96,7 +96,6 @@ struct apple_dart_hw {
  * @num_clks: number of @clks
  * @lock: lock for hardware operations involving this dart
  * @supports_bypass: indicates if this DART supports bypass mode
- * @force_bypass: force bypass mode due to pagesize mismatch?
  * @sid2group: maps stream ids to iommu_groups
  * @iommu: iommu core device
  */
@@ -113,7 +112,6 @@ struct apple_dart {
 	spinlock_t lock;
 
 	u32 supports_bypass : 1;
-	u32 force_bypass : 1;
 
 	struct iommu_group *sid2group[DART_MAX_STREAMS];
 	struct iommu_device iommu;
@@ -497,9 +495,6 @@ static int apple_dart_attach_dev(struct iommu_domain *domain,
 	struct apple_dart_master_cfg *cfg = dev_iommu_priv_get(dev);
 	struct apple_dart_domain *dart_domain = to_dart_domain(domain);
 
-	if (cfg->stream_maps[0].dart->force_bypass &&
-	    domain->type != IOMMU_DOMAIN_IDENTITY)
-		return -EINVAL;
 	if (!cfg->stream_maps[0].dart->supports_bypass &&
 	    domain->type == IOMMU_DOMAIN_IDENTITY)
 		return -EINVAL;
@@ -628,8 +623,6 @@ static int apple_dart_of_xlate(struct device *dev, struct of_phandle_args *args)
 	if (cfg_dart) {
 		if (cfg_dart->supports_bypass != dart->supports_bypass)
 			return -EINVAL;
-		if (cfg_dart->force_bypass != dart->force_bypass)
-			return -EINVAL;
 	}
 
 	for (i = 0; i < MAX_DARTS_PER_DEVICE; ++i) {
@@ -732,8 +725,6 @@ static int apple_dart_def_domain_type(struct device *dev)
 {
 	struct apple_dart_master_cfg *cfg = dev_iommu_priv_get(dev);
 
-	if (cfg->stream_maps[0].dart->force_bypass)
-		return IOMMU_DOMAIN_IDENTITY;
 	if (!cfg->stream_maps[0].dart->supports_bypass)
 		return IOMMU_DOMAIN_DMA;
 
@@ -901,7 +892,6 @@ static int apple_dart_probe(struct platform_device *pdev)
 	dart_params[1] = readl(dart->regs + DART_PARAMS2);
 	pgsize = 1 << FIELD_GET(DART_PARAMS_PAGE_SHIFT, dart_params[0]);
 	dart->supports_bypass = dart_params[1] & DART_PARAMS_BYPASS_SUPPORT;
-	dart->force_bypass = pgsize > PAGE_SIZE;
 
 	if (pgsize != SZ_16K) {
 		dev_err(&pdev->dev,
@@ -933,8 +923,8 @@ static int apple_dart_probe(struct platform_device *pdev)
 
 	dev_info(
 		&pdev->dev,
-		"DART [bypass support: %d, bypass forced: %d] initialized\n",
-		dart->supports_bypass, dart->force_bypass);
+		"DART [bypass support: %d] initialized\n",
+		dart->supports_bypass);
 	return 0;
 
 err_sysfs_remove:
