@@ -1946,7 +1946,15 @@ static struct iommu_domain *__iommu_domain_alloc(struct bus_type *bus,
 	if (bus == NULL || bus->iommu_ops == NULL)
 		return NULL;
 
-	if ((type & __IOMMU_DOMAIN_PAGING) &&
+	/*
+	 * If a paging domain is requested make sure that the caller opted in
+	 * to handle domains with a larger page size than the CPU's page size
+	 * in case the IOMMU driver forces this. Note that if a driver claims
+	 * to support PAGE_SIZE for now and only restricts that later when
+	 * attaching a device we will still allow the domain to be allocated
+	 * here and later hit a BUG_ON then.
+	 */
+	if ((type & __IOMMU_DOMAIN_PAGING) && !(type & __IOMMU_DOMAIN_LP) &&
 	      !(bus->iommu_ops->pgsize_bitmap & (PAGE_SIZE | (PAGE_SIZE-1)))) {
 		pr_warn("paging domain requested but IOMMU pages cannot exactly represent CPU pages.\n");
 		return NULL;
@@ -1994,13 +2002,14 @@ static int __iommu_attach_device(struct iommu_domain *domain,
 		trace_attach_device_to_domain(dev);
 
 	/*
-	 * We don't allow allocating paging domains with IOMMU page sizes
-	 * larger than PAGE_SIZE. If a iommu driver
+	 * We don't allow allocating paging domains that didn't explicitely opt-in
+	 * to handle IOMMU page sizes larger than PAGE_SIZE. If a iommu driver
 	 * claims to support PAGE_SIZE in iommu_ops but later restricts that after a
 	 * first device attach to only support larger page sizes we can end up with
 	 * an invalid configuration here though.
 	 */
 	BUG_ON((domain->type & __IOMMU_DOMAIN_PAGING) &&
+		!(domain->type & __IOMMU_DOMAIN_LP) &&
 		!(domain->pgsize_bitmap & (PAGE_SIZE | (PAGE_SIZE - 1))));
 
 	return ret;
