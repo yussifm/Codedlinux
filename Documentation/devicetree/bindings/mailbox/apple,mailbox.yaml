@@ -62,6 +62,9 @@ properties:
   "#mbox-cells":
     const: 0
 
+  power-domains:
+    maxItems: 1
+
 required:
   - compatible
   - reg
