@@ -8,6 +8,7 @@
  */
 
 #include <linux/bitfield.h>
+#include <linux/bits.h>
 #include <linux/clk.h>
 #include <linux/module.h>
 #include <linux/interrupt.h>
@@ -16,8 +17,6 @@
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
 #include <linux/spi/spi.h>
-
-#define APPLE_SPI_DRIVER_NAME           "apple_spi"
 
 #define APPLE_SPI_CTRL			0x000
 #define APPLE_SPI_CTRL_RUN		BIT(0)
@@ -213,7 +212,7 @@ static bool apple_spi_prep_transfer(struct apple_spi *spi, struct spi_transfer *
 	 *    bits_per_word * fifo_threshold / hz <= 5 * 10^-6
 	 *    200000 * bits_per_word * fifo_threshold <= hz
 	 */
-	return 200000 * t->bits_per_word * APPLE_SPI_FIFO_DEPTH / 2 <= t->speed_hz;
+	return (200000 * t->bits_per_word * APPLE_SPI_FIFO_DEPTH / 2) <= t->speed_hz;
 }
 
 static irqreturn_t apple_spi_irq(int irq, void *dev_id)
@@ -362,14 +361,23 @@ static int apple_spi_transfer_one(struct spi_controller *ctlr, struct spi_device
 	bool poll = apple_spi_prep_transfer(spi, t);
 	const void *tx_ptr = t->tx_buf;
 	void *rx_ptr = t->rx_buf;
-	unsigned int bytes_per_word = t->bits_per_word > 16 ? 4 : t->bits_per_word > 8 ? 2 : 1;
-	u32 words = t->len / bytes_per_word;
-	u32 remaining_tx = tx_ptr ? words : 0;
-	u32 remaining_rx = rx_ptr ? words : 0;
+	unsigned int bytes_per_word;
+	u32 words, remaining_tx, remaining_rx;
 	u32 xfer_flags = 0;
 	u32 fifo_flags;
 	int retries = 100;
 	int ret = 0;
+
+	if (t->bits_per_word > 16)
+		bytes_per_word = 4;
+	else if (t->bits_per_word > 8)
+		bytes_per_word = 2;
+	else
+		bytes_per_word = 1;
+
+	words = t->len / bytes_per_word;
+	remaining_tx = tx_ptr ? words : 0;
+	remaining_rx = rx_ptr ? words : 0;
 
 	/* Reset FIFOs */
 	reg_write(spi, APPLE_SPI_CTRL, APPLE_SPI_CTRL_RX_RESET | APPLE_SPI_CTRL_TX_RESET);
@@ -398,7 +406,7 @@ static int apple_spi_transfer_one(struct spi_controller *ctlr, struct spi_device
 	apple_spi_tx(spi, &tx_ptr, &remaining_tx, bytes_per_word);
 
 	while (xfer_flags) {
-		u32 fifo_flags = 0;
+		fifo_flags = 0;
 
 		if (remaining_tx)
 			fifo_flags |= APPLE_SPI_FIFO_TXTHRESH;
@@ -446,53 +454,50 @@ err:
 	return ret;
 }
 
+static void apple_spi_clk_disable_unprepare(void *data)
+{
+        clk_disable_unprepare(data);
+}
+
 static int apple_spi_probe(struct platform_device *pdev)
 {
 	struct apple_spi *spi;
 	int ret, irq;
 	struct spi_controller *ctlr;
 
-	ctlr = spi_alloc_master(&pdev->dev, sizeof(struct apple_spi));
-	if (!ctlr) {
-		dev_err(&pdev->dev, "out of memory\n");
-		return -ENOMEM;
-	}
+	ctlr = devm_spi_alloc_master(&pdev->dev, sizeof(struct apple_spi));
+	if (!ctlr)
+		return dev_err_probe(&pdev->dev, -ENOMEM, "out of memory\n");
 
 	spi = spi_controller_get_devdata(ctlr);
 	init_completion(&spi->done);
 	platform_set_drvdata(pdev, ctlr);
 
 	spi->regs = devm_platform_ioremap_resource(pdev, 0);
-	if (IS_ERR(spi->regs)) {
-		ret = PTR_ERR(spi->regs);
-		goto put_ctlr;
-	}
+	if (IS_ERR(spi->regs))
+		return PTR_ERR(spi->regs);
 
 	spi->clk = devm_clk_get(&pdev->dev, NULL);
-	if (IS_ERR(spi->clk)) {
-		dev_err(&pdev->dev, "Unable to find bus clock\n");
-		ret = PTR_ERR(spi->clk);
-		goto put_ctlr;
-	}
+	if (IS_ERR(spi->clk))
+		return dev_err_probe(&pdev->dev, PTR_ERR(spi->clk), "Unable to find bus clock\n");
 
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0) {
-		ret = irq;
-		goto put_ctlr;
+		return irq;
 	}
 
 	ret = devm_request_irq(&pdev->dev, irq, apple_spi_irq, 0,
 			       dev_name(&pdev->dev), spi);
-	if (ret) {
-		dev_err(&pdev->dev, "Unable to bind to interrupt\n");
-		goto put_ctlr;
-	}
+	if (ret)
+		return dev_err_probe(&pdev->dev, ret, "Unable to bind to interrupt\n");
 
 	ret = clk_prepare_enable(spi->clk);
-	if (ret) {
-		dev_err(&pdev->dev, "Unable to enable bus clock\n");
-		goto put_ctlr;
-	}
+	if (ret)
+		return dev_err_probe(&pdev->dev, ret, "Unable to enable bus clock\n");
+
+	ret = devm_add_action_or_reset(&pdev->dev, apple_spi_clk_disable_unprepare, spi->clk);
+	if (ret)
+		return ret;
 
 	ctlr->dev.of_node = pdev->dev.of_node;
 	ctlr->bus_num = pdev->id;
@@ -506,41 +511,13 @@ static int apple_spi_probe(struct platform_device *pdev)
 	ctlr->auto_runtime_pm = true;
 
 	pm_runtime_set_active(&pdev->dev);
-	pm_runtime_enable(&pdev->dev);
-
-	pdev->dev.dma_mask = NULL;
+	devm_pm_runtime_enable(&pdev->dev);
 
 	apple_spi_init(spi);
 
 	ret = devm_spi_register_controller(&pdev->dev, ctlr);
-	if (ret < 0) {
-		dev_err(&pdev->dev, "spi_register_ctlr failed\n");
-		goto disable_pm;
-	}
-
-	return 0;
-
-disable_pm:
-	pm_runtime_disable(&pdev->dev);
-	clk_disable_unprepare(spi->clk);
-put_ctlr:
-	spi_controller_put(ctlr);
-
-	return ret;
-}
-
-static int apple_spi_remove(struct platform_device *pdev)
-{
-	struct spi_controller *ctlr = platform_get_drvdata(pdev);
-	struct apple_spi *spi = spi_controller_get_devdata(ctlr);
-
-	pm_runtime_disable(&pdev->dev);
-
-	/* Disable all the interrupts just in case */
-	reg_write(spi, APPLE_SPI_IE_FIFO, 0);
-	reg_write(spi, APPLE_SPI_IE_XFER, 0);
-
-	clk_disable_unprepare(spi->clk);
+	if (ret < 0)
+		return dev_err_probe(&pdev->dev, ret, "devm_spi_register_controller failed\n");
 
 	return 0;
 }
@@ -553,9 +530,8 @@ MODULE_DEVICE_TABLE(of, apple_spi_of_match);
 
 static struct platform_driver apple_spi_driver = {
 	.probe = apple_spi_probe,
-	.remove = apple_spi_remove,
 	.driver = {
-		.name = APPLE_SPI_DRIVER_NAME,
+		.name = "apple-spi",
 		.of_match_table = apple_spi_of_match,
 	},
 };
