@@ -825,7 +825,9 @@ static struct spi_driver spi_hid_apple_driver = {
 
 	.probe		= spi_hid_apple_probe,
 	.remove		= spi_hid_apple_remove,
+#ifdef CONFIG_PM_SLEEP
 	.shutdown	= spi_hid_apple_shutdown,
+#endif
 };
 
 module_spi_driver(spi_hid_apple_driver);
