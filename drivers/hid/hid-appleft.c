@@ -222,27 +222,15 @@ static int appleft_setup_input(struct input_dev *input, struct hid_device *hdev)
 	int mt_flags = 0;
 	struct appleft_sc *asc = hid_get_drvdata(hdev);
 
-	__set_bit(EV_KEY, input->evbit);
-
-	__clear_bit(EV_MSC, input->evbit);
+	__set_bit(INPUT_PROP_BUTTONPAD, input->propbit);
 	__clear_bit(BTN_0, input->keybit);
 	__clear_bit(BTN_RIGHT, input->keybit);
 	__clear_bit(BTN_MIDDLE, input->keybit);
-	__set_bit(BTN_MOUSE, input->keybit);
-	__set_bit(INPUT_PROP_BUTTONPAD, input->propbit);
-	__set_bit(BTN_TOOL_FINGER, input->keybit);
+	__clear_bit(EV_REL, input->evbit);
+	__clear_bit(REL_X, input->relbit);
+	__clear_bit(REL_Y, input->relbit);
 
 	mt_flags = INPUT_MT_POINTER | INPUT_MT_DROP_UNUSED | INPUT_MT_TRACK;
-
-	__set_bit(EV_ABS, input->evbit);
-
-	error = input_mt_init_slots(input, 16, mt_flags);
-	if (error)
-		return error;
-
-	/* basic properties */
-	input_set_capability(input, EV_REL, REL_X);
-	input_set_capability(input, EV_REL, REL_Y);
 
 	/* finger touch area */
 	input_set_abs_params(input, ABS_MT_TOUCH_MAJOR, 0, 5000, 0, 0);
@@ -259,8 +247,14 @@ static int appleft_setup_input(struct input_dev *input, struct hid_device *hdev)
 	 * inverse of the reported Y.
 	 */
 
-	input_set_abs_params(input, ABS_MT_PRESSURE, 0, 253, 0, 0);
-	input_set_abs_params(input, ABS_PRESSURE, 0, 253, 0, 0);
+	input_set_abs_params(input, ABS_MT_PRESSURE, 0, 6000, 0, 0);
+
+	/*
+	 * This makes libinput recognize this as a PressurePad and
+	 * stop trying to use pressure for touch size. Pressure unit
+	 * seems to be ~grams on these touchpads.
+	 */
+	input_abs_set_res(input, ABS_MT_PRESSURE, 1);
 
 	/* finger orientation */
 	input_set_abs_params(input, ABS_MT_ORIENTATION, -MAX_FINGER_ORIENTATION,
@@ -272,11 +266,18 @@ static int appleft_setup_input(struct input_dev *input, struct hid_device *hdev)
 	input_set_abs_params(input, ABS_MT_POSITION_Y, asc->y_min, asc->y_max,
 			     0, 0);
 
+	/* touchpad button */
+	input_set_capability(input, EV_KEY, BTN_MOUSE);
+
 	/*
 	 * hid-input may mark device as using autorepeat, but the trackpad does
 	 * not actually want it.
 	 */
 	__clear_bit(EV_REP, input->evbit);
+
+	error = input_mt_init_slots(input, 16, mt_flags);
+	if (error)
+		return error;
 
 	return 0;
 }
