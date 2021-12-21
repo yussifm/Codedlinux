@@ -1183,19 +1183,21 @@ brcmf_run_escan(struct brcmf_cfg80211_info *cfg, struct brcmf_if *ifp,
 	brcmf_escan_prep(cfg, &params->params_v2_le, request);
 
 	params->version = cpu_to_le32(BRCMF_ESCAN_REQ_VERSION_V2);
-	params->action = cpu_to_le16(WL_ESCAN_ACTION_START);
-	params->sync_id = cpu_to_le16(0x1234);
 
 	if (!brcmf_feat_is_enabled(ifp, BRCMF_FEAT_SCAN_V2)) {
-		struct brcmf_scan_params_le params_v1;
+		struct brcmf_escan_params_le *params_v1;
 
-		params->version = cpu_to_le32(BRCMF_ESCAN_REQ_VERSION);
 		params_size -= BRCMF_SCAN_PARAMS_V2_FIXED_SIZE;
 		params_size += BRCMF_SCAN_PARAMS_FIXED_SIZE;
-		brcmf_scan_params_v2_to_v1(&params->params_v2_le, &params_v1);
-		memcpy(&params->params_le, &params_v1, params_size -
-		       offsetof(struct brcmf_escan_params_le, params_v2_le));
+		params_v1 = kzalloc(params_size, GFP_KERNEL);
+		params_v1->version = cpu_to_le32(BRCMF_ESCAN_REQ_VERSION);
+		brcmf_scan_params_v2_to_v1(&params->params_v2_le, &params_v1->params_le);
+		kfree(params);
+		params = params_v1;
 	}
+
+	params->action = cpu_to_le16(WL_ESCAN_ACTION_START);
+	params->sync_id = cpu_to_le16(0x1234);
 
 	err = brcmf_fil_iovar_data_set(ifp, "escan", params, params_size);
 	if (err) {
