@@ -21,6 +21,10 @@
 	};
 };
 
+&wifi0 {
+	apple,module-instance = "santorini";
+};
+
 /*
  * Provide labels for the USB type C ports.
  */
