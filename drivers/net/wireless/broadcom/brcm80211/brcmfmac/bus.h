@@ -7,6 +7,8 @@
 #define BRCMFMAC_BUS_H
 
 #include "debug.h"
+#include <linux/kernel.h>
+#include <linux/firmware.h>
 
 /* IDs of the 6 default common rings of msgbuf protocol */
 #define BRCMF_H2D_MSGRING_CONTROL_SUBMIT	0
@@ -60,7 +62,7 @@ struct brcmf_bus_dcmd {
  * @wowl_config: specify if dongle is configured for wowl when going to suspend
  * @get_ramsize: obtain size of device memory.
  * @get_memdump: obtain device memory dump in provided buffer.
- * @get_fwname: obtain firmware name.
+ * @get_clm: obtain CLM firmware blob.
  *
  * This structure provides an abstract interface towards the
  * bus specific driver. For control messages to common driver
@@ -77,8 +79,7 @@ struct brcmf_bus_ops {
 	void (*wowl_config)(struct device *dev, bool enabled);
 	size_t (*get_ramsize)(struct device *dev);
 	int (*get_memdump)(struct device *dev, void *data, size_t len);
-	int (*get_fwname)(struct device *dev, const char *ext,
-			  unsigned char *fw_name);
+	int (*get_clm)(struct device *dev, const struct firmware **fw);
 	void (*debugfs_create)(struct device *dev);
 	int (*reset)(struct device *dev);
 };
@@ -220,10 +221,9 @@ int brcmf_bus_get_memdump(struct brcmf_bus *bus, void *data, size_t len)
 }
 
 static inline
-int brcmf_bus_get_fwname(struct brcmf_bus *bus, const char *ext,
-			 unsigned char *fw_name)
+int brcmf_bus_get_clm(struct brcmf_bus *bus, const struct firmware **fw)
 {
-	return bus->ops->get_fwname(bus->dev, ext, fw_name);
+	return bus->ops->get_clm(bus->dev, fw);
 }
 
 static inline
