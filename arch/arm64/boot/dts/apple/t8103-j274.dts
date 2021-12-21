@@ -21,6 +21,10 @@
 	};
 };
 
+&wifi0 {
+	apple,module-instance = "atlantisb";
+};
+
 /*
  * Provide labels for the USB type C ports.
  */
