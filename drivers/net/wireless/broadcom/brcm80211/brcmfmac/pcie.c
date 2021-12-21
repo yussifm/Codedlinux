@@ -557,38 +557,46 @@ brcmf_pcie_copy_mem_todev(struct brcmf_pciedev_info *devinfo, u32 mem_offset,
 			  void *srcaddr, u32 len)
 {
 	void __iomem *address = devinfo->tcm + mem_offset;
-	__le32 *src32;
-	__le16 *src16;
 	u8 *src8;
 
-	if (((ulong)address & 4) || ((ulong)srcaddr & 4) || (len & 4)) {
-		if (((ulong)address & 2) || ((ulong)srcaddr & 2) || (len & 2)) {
-			src8 = (u8 *)srcaddr;
-			while (len) {
-				iowrite8(*src8, address);
-				address++;
-				src8++;
-				len--;
-			}
-		} else {
-			len = len / 2;
-			src16 = (__le16 *)srcaddr;
-			while (len) {
-				iowrite16(le16_to_cpu(*src16), address);
-				address += 2;
-				src16++;
-				len--;
-			}
+#ifdef CONFIG_64BIT
+	if (!(((ulong)address & 7) || ((ulong)srcaddr & 7))) {
+		__le64 *src64 = (__le64 *)srcaddr;
+		while (len >= 8) {
+			iowrite64(le64_to_cpu(*src64), address);
+			address += 8;
+			srcaddr += 8;
+			src64++;
+			len -= 8;
 		}
-	} else {
-		len = len / 4;
-		src32 = (__le32 *)srcaddr;
-		while (len) {
+	}
+#endif
+	if (!(((ulong)address & 3) || ((ulong)srcaddr & 3))) {
+		__le32 *src32 = (__le32 *)srcaddr;
+		while (len >= 4) {
 			iowrite32(le32_to_cpu(*src32), address);
 			address += 4;
+			srcaddr += 4;
 			src32++;
-			len--;
+			len -= 4;
 		}
+	}
+	if (!((ulong)address & 1) || ((ulong)srcaddr & 1)) {
+		__le16 *src16 = (__le16 *)srcaddr;
+		while (len >= 2) {
+			iowrite16(le16_to_cpu(*src16), address);
+			address += 2;
+			srcaddr += 2;
+			src16++;
+			len -= 2;
+		}
+	}
+	src8 = (u8 *)srcaddr;
+	while (len) {
+		iowrite8(*src8, address);
+		address++;
+		src8++;
+		len--;
 	}
 }
 
