@@ -18,6 +18,7 @@
 	aliases {
 		serial0 = &serial0;
 		ethernet0 = &ethernet0;
+		wifi0 = &wifi0;
 	};
 
 	chosen {
@@ -52,6 +53,11 @@
  */
 &port00 {
 	bus-range = <1 1>;
+	wifi0: wlan@0,0 {
+		compatible = "pci14e4,4425";
+		reg = <0x10000 0 0 0 0>;
+		brcm,board-type = "apple,atlantisb";
+	};
 };
 
 &port01 {
