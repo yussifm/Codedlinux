@@ -237,14 +237,19 @@ static int apple_rtkit_common_rx_get_buffer(struct apple_rtkit *rtk,
 
 	rtk_dbg("buffer request for 0x%zx bytes at 0x%llx\n", size, iova);
 
-	if (rtk->ops->flags & APPLE_RTKIT_SHMEM_OWNER_RTKIT)
+	if (rtk->ops->flags & APPLE_RTKIT_SHMEM_OWNER_RTKIT) {
 		buffer->iomem = rtk->ops->shmem_map(rtk->cookie, iova, size);
-	else if (rtk->ops->shmem_alloc)
+		if (IS_ERR(buffer->iomem))
+			return PTR_ERR(buffer->iomem);
+	} else if (rtk->ops->shmem_alloc) {
 		buffer->buffer = rtk->ops->shmem_alloc(rtk->cookie, size, &iova,
 						       GFP_KERNEL);
-	else
+		if (IS_ERR(buffer->buffer))
+			return PTR_ERR(buffer->buffer);
+	} else {
 		buffer->buffer =
 			dma_alloc_coherent(rtk->dev, size, &iova, GFP_KERNEL);
+	}
 
 	if (!buffer->buffer && !buffer->iomem)
 		return -ENOMEM;
