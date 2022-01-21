@@ -275,8 +275,9 @@ static void apple_rtkit_free_buffer(struct apple_rtkit *rtk,
 		return;
 
 	if (rtk->ops->flags & APPLE_RTKIT_SHMEM_OWNER_RTKIT) {
-		rtk->ops->shmem_unmap(rtk->cookie, bfr->iomem, bfr->iova,
-				      bfr->size);
+		if (rtk->ops->shmem_unmap)
+			rtk->ops->shmem_unmap(rtk->cookie, bfr->iomem, bfr->iova,
+					      bfr->size);
 	} else if (rtk->ops->shmem_free) {
 		rtk->ops->shmem_free(rtk->cookie, bfr->size, bfr->buffer,
 				     bfr->iova);

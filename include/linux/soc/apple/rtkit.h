@@ -40,7 +40,9 @@
  * @shmem_map:    Used with APPLE_RTKIT_SHMEM_OWNER_RTKIT to map an
  *                addressed returned by the co-processor into the kernel.
  * @shmem_unmap:  Used with APPLE_RTKIT_SHMEM_OWNER_RTKIT to unmap a previous
- *                mapping created with shmem_map again.
+ *                mapping created with shmem_map again. If not specified,
+ *                it is a no-op and the parent driver is assumed to take care of
+ *                clean-up.
  * @shmem_alloc:  Used with APPLE_RTKIT_SHMEM_OWNER_LINUX to allocate a shared
  *                memory buffer for the co-processor. If not specified
  *                dma_alloc_coherent is used.
