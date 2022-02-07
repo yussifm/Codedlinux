@@ -30,6 +30,9 @@ static const struct mfd_cell apple_smc_devs[] = {
 		.name = "macsmc-gpio",
 	},
 	{
+		.name = "macsmc-power",
+	},
+	{
 		.name = "macsmc-hid",
 	},
 };
