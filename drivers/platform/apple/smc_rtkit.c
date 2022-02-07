@@ -78,15 +78,16 @@ static int apple_smc_cmd(struct apple_smc_rtkit *smc, u64 cmd, u64 arg,
 		return ret;
 	}
 
-	if (wait_for_completion_timeout(&smc->cmd_done, SMC_TIMEOUT) == 0) {
-		dev_err(smc->dev, "Command timed out (%llx)", msg);
-		return -ETIMEDOUT;
-	}
-	if (FIELD_GET(SMC_ID, smc->cmd_ret) != smc->msg_id) {
+	do {
+		if (wait_for_completion_timeout(&smc->cmd_done, SMC_TIMEOUT) == 0) {
+			dev_err(smc->dev, "Command timed out (%llx)", msg);
+			return -ETIMEDOUT;
+		}
+		if (FIELD_GET(SMC_ID, smc->cmd_ret) == smc->msg_id)
+			break;
 		dev_err(smc->dev, "Command sequence mismatch (expected %d, got %d)\n",
 			smc->msg_id, (unsigned int)FIELD_GET(SMC_ID, smc->cmd_ret));
-		return -EIO;
-	}
+	} while(1);
 
 	result = FIELD_GET(SMC_RESULT, smc->cmd_ret);
 	if (result != 0)
@@ -223,6 +224,8 @@ static void apple_smc_rtkit_recv(void *cookie, u8 endpoint, u64 message)
 			smc->alive = true;
 		smc->initialized = true;
 		complete(&smc->init_done);
+	} else if (FIELD_GET(SMC_MSG, message) == SMC_MSG_NOTIFICATION) {
+		apple_smc_event_received(smc->core, FIELD_GET(SMC_DATA, message));
 	} else {
 		smc->cmd_ret = message;
 		complete(&smc->cmd_done);

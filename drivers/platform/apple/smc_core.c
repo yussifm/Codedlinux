@@ -7,6 +7,7 @@
 #include <linux/device.h>
 #include <linux/mfd/core.h>
 #include <linux/mutex.h>
+#include <linux/notifier.h>
 #include "smc.h"
 
 struct apple_smc {
@@ -20,6 +21,8 @@ struct apple_smc {
 	u32 key_count;
 	smc_key first_key;
 	smc_key last_key;
+
+	struct blocking_notifier_head event_handlers;
 };
 
 static const struct mfd_cell apple_smc_devs[] = {
@@ -132,6 +135,27 @@ int apple_smc_get_key_count(struct apple_smc *smc)
 }
 EXPORT_SYMBOL(apple_smc_get_key_count);
 
+void apple_smc_event_received(struct apple_smc *smc, uint32_t event)
+{
+	dev_dbg(smc->dev, "Event: 0x%08x\n", event);
+	blocking_notifier_call_chain(&smc->event_handlers, event, NULL);
+}
+EXPORT_SYMBOL(apple_smc_event_received);
+
+int apple_smc_register_notifier(struct apple_smc *smc, struct notifier_block *n)
+{
+	return blocking_notifier_chain_register(&smc->event_handlers, n);
+}
+EXPORT_SYMBOL(apple_smc_register_notifier);
+
+int apple_smc_unregister_notifier(struct apple_smc *smc, struct notifier_block *n)
+{
+	return blocking_notifier_chain_unregister(&smc->event_handlers, n);
+}
+EXPORT_SYMBOL(apple_smc_unregister_notifier);
+
+int apple_smc_unregister_notifier(struct apple_smc *smc, struct notifier_block *n);
+
 struct apple_smc *apple_smc_probe(struct device *dev, const struct apple_smc_backend_ops *ops, void *cookie)
 {
 	struct apple_smc *smc;
@@ -146,6 +170,7 @@ struct apple_smc *apple_smc_probe(struct device *dev, const struct apple_smc_bac
 	smc->be_cookie = cookie;
 	smc->be = ops;
 	mutex_init(&smc->mutex);
+	RAW_INIT_NOTIFIER_HEAD(&smc->event_handlers);
 
 	ret = apple_smc_read_u32(smc, SMC_KEY(#KEY), &count);
 	if (ret)
@@ -159,6 +184,9 @@ struct apple_smc *apple_smc_probe(struct device *dev, const struct apple_smc_bac
 	ret = apple_smc_get_key_by_index(smc, smc->key_count - 1, &smc->last_key);
 	if (ret)
 		return ERR_PTR(dev_err_probe(dev, ret, "Failed to get last key"));
+
+	/* Enable notifications */
+	apple_smc_write_flag(smc, SMC_KEY(NTAP), 1);
 
 	dev_info(dev, "Initialized (%d keys %p4ch..%p4ch)\n",
 		 smc->key_count, &smc->first_key, &smc->last_key);
@@ -176,6 +204,9 @@ EXPORT_SYMBOL(apple_smc_probe);
 int apple_smc_remove(struct apple_smc *smc)
 {
 	mfd_remove_devices(smc->dev);
+
+	/* Disable notifications */
+	apple_smc_write_flag(smc, SMC_KEY(NTAP), 1);
 
 	return 0;
 }

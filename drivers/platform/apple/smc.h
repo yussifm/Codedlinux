@@ -21,5 +21,6 @@ struct apple_smc_backend_ops {
 struct apple_smc *apple_smc_probe(struct device *dev, const struct apple_smc_backend_ops *ops,
 				  void *cookie);
 int apple_smc_remove(struct apple_smc *smc);
+void apple_smc_event_received(struct apple_smc *smc, uint32_t event);
 
 #endif
