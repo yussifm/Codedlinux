@@ -437,24 +437,55 @@
 			#address-cells = <2>;
 			#size-cells = <0>;
 
-			pmu@f {
+			pmu1: pmu@f {
 				compatible = "apple,sera-pmu", "apple,spmi-pmu";
 				reg = <0xf SPMI_USID>;
 				#address-cells = <1>;
 				#size-cells = <1>;
 
-				rtc@d000 {
-					compatible = "apple,sera-pmu-rtc", "apple,spmi-pmu-rtc";
-					reg = <0xd000 0x200>;
-					reg-names = "rtc";
-					apple,rtc-counter = <0xd002>;
-					apple,rtc-offset = <0xd100>;
+				rtc_nvmem@d000 {
+					compatible = "apple,spmi-pmu-nvmem";
+					reg = <0xd000 0x110>;
+					#address-cells = <1>;
+					#size-cells = <1>;
+
+					pm_setting: pm-setting@1 {
+						reg = <0x1 0x1>;
+					};
+
+					rtc_offset: rtc-offset@100 {
+						reg = <0x100 0x6>;
+					};
 				};
 
-				system-pm@9f00 {
-					compatible = "apple,sera-pmu-pm", "apple,spmi-pmu-pm";
-					reg = <0x9f00 0x1000>, <0xd001 0x1>;
-					reg-names = "leg_scrpad", "pm_setting";
+				legacy_nvmem@9f00 {
+					compatible = "apple,spmi-pmu-nvmem";
+					reg = <0x9f00 0x20>;
+					#address-cells = <1>;
+					#size-cells = <1>;
+
+					boot_stage: boot-stage@1 {
+						reg = <0x1 0x1>;
+					};
+
+					boot_error_count: boot-error-count@2 {
+						reg = <0x2 0x1>;
+						bits = <0 4>;
+					};
+
+					panic_count: panic-count@2 {
+						reg = <0x2 0x1>;
+						bits = <4 4>;
+					};
+
+					boot_error_stage: boot-error-stage@3 {
+						reg = <0x3 0x1>;
+					};
+
+					shutdown_flag: shutdown-flag@f {
+						reg = <0xf 0x1>;
+						bits = <3 1>;
+					};
 				};
 			};
 		};
