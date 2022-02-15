@@ -61,9 +61,9 @@
 			reg = <0x0 0x0>;
 			enable-method = "spin-table";
 			cpu-release-addr = <0 0>; /* To be filled by loader */
-			clocks = <&clk_ecluster>;
-			operating-points-v2 = <&ecluster_opp>;
+			operating-points-v2 = <&icestorm_opp>;
 			capacity-dmips-mhz = <714>;
+			apple,freq-domain = <&cpufreq_hw 0>;
 		};
 
 		cpu_e1: cpu@1 {
@@ -72,9 +72,9 @@
 			reg = <0x0 0x1>;
 			enable-method = "spin-table";
 			cpu-release-addr = <0 0>; /* To be filled by loader */
-			clocks = <&clk_ecluster>;
-			operating-points-v2 = <&ecluster_opp>;
+			operating-points-v2 = <&icestorm_opp>;
 			capacity-dmips-mhz = <714>;
+			apple,freq-domain = <&cpufreq_hw 0>;
 		};
 
 		cpu_e2: cpu@2 {
@@ -83,9 +83,9 @@
 			reg = <0x0 0x2>;
 			enable-method = "spin-table";
 			cpu-release-addr = <0 0>; /* To be filled by loader */
-			clocks = <&clk_ecluster>;
-			operating-points-v2 = <&ecluster_opp>;
+			operating-points-v2 = <&icestorm_opp>;
 			capacity-dmips-mhz = <714>;
+			apple,freq-domain = <&cpufreq_hw 0>;
 		};
 
 		cpu_e3: cpu@3 {
@@ -94,9 +94,9 @@
 			reg = <0x0 0x3>;
 			enable-method = "spin-table";
 			cpu-release-addr = <0 0>; /* To be filled by loader */
-			clocks = <&clk_ecluster>;
-			operating-points-v2 = <&ecluster_opp>;
+			operating-points-v2 = <&icestorm_opp>;
 			capacity-dmips-mhz = <714>;
+			apple,freq-domain = <&cpufreq_hw 0>;
 		};
 
 		cpu_p0: cpu@10100 {
@@ -105,9 +105,9 @@
 			reg = <0x0 0x10100>;
 			enable-method = "spin-table";
 			cpu-release-addr = <0 0>; /* To be filled by loader */
-			clocks = <&clk_pcluster>;
-			operating-points-v2 = <&pcluster_opp>;
+			operating-points-v2 = <&firestorm_opp>;
 			capacity-dmips-mhz = <1024>;
+			apple,freq-domain = <&cpufreq_hw 1>;
 		};
 
 		cpu_p1: cpu@10101 {
@@ -116,9 +116,9 @@
 			reg = <0x0 0x10101>;
 			enable-method = "spin-table";
 			cpu-release-addr = <0 0>; /* To be filled by loader */
-			clocks = <&clk_pcluster>;
-			operating-points-v2 = <&pcluster_opp>;
+			operating-points-v2 = <&firestorm_opp>;
 			capacity-dmips-mhz = <1024>;
+			apple,freq-domain = <&cpufreq_hw 1>;
 		};
 
 		cpu_p2: cpu@10102 {
@@ -127,9 +127,9 @@
 			reg = <0x0 0x10102>;
 			enable-method = "spin-table";
 			cpu-release-addr = <0 0>; /* To be filled by loader */
-			clocks = <&clk_pcluster>;
-			operating-points-v2 = <&pcluster_opp>;
+			operating-points-v2 = <&firestorm_opp>;
 			capacity-dmips-mhz = <1024>;
+			apple,freq-domain = <&cpufreq_hw 1>;
 		};
 
 		cpu_p3: cpu@10103 {
@@ -138,13 +138,13 @@
 			reg = <0x0 0x10103>;
 			enable-method = "spin-table";
 			cpu-release-addr = <0 0>; /* To be filled by loader */
-			clocks = <&clk_pcluster>;
-			operating-points-v2 = <&pcluster_opp>;
+			operating-points-v2 = <&firestorm_opp>;
 			capacity-dmips-mhz = <1024>;
+			apple,freq-domain = <&cpufreq_hw 1>;
 		};
 	};
 
-	ecluster_opp: opp-table-0 {
+	icestorm_opp: opp-table-0 {
 		compatible = "operating-points-v2";
 		opp-shared;
 
@@ -180,7 +180,7 @@
 		};
 	};
 
-	pcluster_opp: opp-table-1 {
+	firestorm_opp: opp-table-1 {
 		compatible = "operating-points-v2";
 		opp-shared;
 
@@ -189,118 +189,105 @@
 			opp-microvolt = <781000>;
 			opp-level = <1>;
 			clock-latency-ns = <8000>;
-			required-opps = <&mcc_lowperf>;
+// 			required-opps = <&mcc_lowperf>;
 		};
 		opp02 {
 			opp-hz = /bits/ 64 <828000000>;
 			opp-microvolt = <781000>;
 			opp-level = <2>;
 			clock-latency-ns = <19000>;
-			required-opps = <&mcc_lowperf>;
+// 			required-opps = <&mcc_lowperf>;
 		};
 		opp03 {
 			opp-hz = /bits/ 64 <1056000000>;
 			opp-microvolt = <781000>;
 			opp-level = <3>;
 			clock-latency-ns = <21000>;
-			required-opps = <&mcc_lowperf>;
+// 			required-opps = <&mcc_lowperf>;
 		};
 		opp04 {
 			opp-hz = /bits/ 64 <1284000000>;
 			opp-microvolt = <800000>;
 			opp-level = <4>;
 			clock-latency-ns = <23000>;
-			required-opps = <&mcc_lowperf>;
+// 			required-opps = <&mcc_lowperf>;
 		};
 		opp05 {
 			opp-hz = /bits/ 64 <1500000000>;
 			opp-microvolt = <821000>;
 			opp-level = <5>;
 			clock-latency-ns = <24000>;
-			required-opps = <&mcc_lowperf>;
+// 			required-opps = <&mcc_lowperf>;
 		};
 		opp06 {
 			opp-hz = /bits/ 64 <1728000000>;
 			opp-microvolt = <831000>;
 			opp-level = <6>;
 			clock-latency-ns = <29000>;
-			required-opps = <&mcc_lowperf>;
+// 			required-opps = <&mcc_lowperf>;
 		};
 		opp07 {
 			opp-hz = /bits/ 64 <1956000000>;
 			opp-microvolt = <865000>;
 			opp-level = <7>;
 			clock-latency-ns = <31000>;
-			required-opps = <&mcc_lowperf>;
+// 			required-opps = <&mcc_lowperf>;
 		};
 		opp08 {
 			opp-hz = /bits/ 64 <2184000000>;
 			opp-microvolt = <909000>;
 			opp-level = <8>;
 			clock-latency-ns = <34000>;
-			required-opps = <&mcc_highperf>;
+// 			required-opps = <&mcc_highperf>;
 		};
 		opp09 {
 			opp-hz = /bits/ 64 <2388000000>;
 			opp-microvolt = <953000>;
 			opp-level = <9>;
 			clock-latency-ns = <36000>;
-			required-opps = <&mcc_highperf>;
+// 			required-opps = <&mcc_highperf>;
 		};
 		opp10 {
 			opp-hz = /bits/ 64 <2592000000>;
 			opp-microvolt = <1003000>;
 			opp-level = <10>;
 			clock-latency-ns = <51000>;
-			required-opps = <&mcc_highperf>;
+// 			required-opps = <&mcc_highperf>;
 		};
 		opp11 {
 			opp-hz = /bits/ 64 <2772000000>;
 			opp-microvolt = <1053000>;
 			opp-level = <11>;
 			clock-latency-ns = <54000>;
-			required-opps = <&mcc_highperf>;
+// 			required-opps = <&mcc_highperf>;
 		};
 		opp12 {
 			opp-hz = /bits/ 64 <2988000000>;
 			opp-microvolt = <1081000>;
 			opp-level = <12>;
 			clock-latency-ns = <55000>;
-			required-opps = <&mcc_highperf>;
+// 			required-opps = <&mcc_highperf>;
 		};
 		opp13 {
 			opp-hz = /bits/ 64 <3096000000>;
 			opp-microvolt = <1081000>;
 			opp-level = <13>;
 			clock-latency-ns = <55000>;
-			required-opps = <&mcc_highperf>;
+// 			required-opps = <&mcc_highperf>;
 		};
 		opp14 {
 			opp-hz = /bits/ 64 <3144000000>;
 			opp-microvolt = <1081000>;
 			opp-level = <14>;
 			clock-latency-ns = <56000>;
-			required-opps = <&mcc_highperf>;
+// 			required-opps = <&mcc_highperf>;
 		};
 		opp15 {
 			opp-hz = /bits/ 64 <3204000000>;
 			opp-microvolt = <1081000>;
 			opp-level = <15>;
 			clock-latency-ns = <56000>;
-			required-opps = <&mcc_highperf>;
-		};
-	};
-
-	mcc_opp: opp-table-2 {
-		compatible = "apple,mcc-operating-points";
-
-		mcc_lowperf: opp0 {
-			opp-level = <0>;
-			apple,memory-perf-config = <0x813057f 0x1800180>;
-		};
-		mcc_highperf: opp1 {
-			opp-level = <1>;
-			apple,memory-perf-config = <0x133 0x55555340>;
+// 			required-opps = <&mcc_highperf>;
 		};
 	};
 
@@ -336,18 +323,13 @@
 		ranges;
 		nonposted-mmio;
 
-		clk_ecluster: clock-controller@210e20000 {
-			compatible = "apple,t8103-cluster-clk", "apple,cluster-clk";
-			#clock-cells = <0>;
-			reg = <0x2 0x10e20000 0x0 0x4000>;
-			operating-points-v2 = <&ecluster_opp>;
-		};
+		cpufreq_hw: cpufreq@210e00000 {
+			compatible = "apple,t8103-cluster-cpufreq", "apple,cluster-cpufreq";
+			reg = <0x2 0x10e20000 0 0x1000>,
+				<0x2 0x11e20000 0 0x1000>;
+			reg-names = "cluster0", "cluster1";
 
-		clk_pcluster: clock-controller@211e20000 {
-			compatible = "apple,t8103-cluster-clk", "apple,cluster-clk";
-			#clock-cells = <0>;
-			reg = <0x2 0x11e20000 0x0 0x4000>;
-			operating-points-v2 = <&pcluster_opp>;
+			#freq-domain-cells = <1>;
 		};
 
 		i2c0: i2c@235010000 {
