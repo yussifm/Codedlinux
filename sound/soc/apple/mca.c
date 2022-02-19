@@ -120,7 +120,7 @@ struct mca_route {
 
 	struct clk *clk_parent;
 
-	bool clocks_in_use[SNDRV_PCM_STREAM_LAST];
+	bool clocks_in_use[SNDRV_PCM_STREAM_LAST + 1];
 
 	unsigned int tdm_slots;
 	unsigned int tdm_slot_width;
