@@ -75,11 +75,12 @@
 #define SERDES_CONF_UNK1	BIT(12)
 #define SERDES_CONF_UNK2	BIT(13)
 #define SERDES_CONF_UNK3	BIT(14)
+#define SERDES_CONF_NO_DATA_FEEDBACK	BIT(15)
 #define SERDES_CONF_SYNC_SEL	GENMASK(18, 16)
 #define REG_TX_SERDES_BITSTART	0x08
 #define REG_RX_SERDES_BITSTART	0x0c
 #define REG_TX_SERDES_CHANMASK	0x10
-#define REG_RX_SERDES_CHANMASK	0x14
+#define REG_RX_SERDES_CHANMASK	0x10
 #define REG_RX_SERDES_PORT	0x04
 
 /* relative to switch base */
@@ -313,17 +314,25 @@ static int mca_configure_serdes(struct mca_data *mca, int cluster, int serdes_un
 	mca_modify(mca, cluster,
 		serdes_unit + (is_tx ? REG_TX_SERDES_CONF : REG_RX_SERDES_CONF),
 		SERDES_CONF_WIDTH_MASK | SERDES_CONF_NCHANS, serdes_conf);
-	mca_poke(mca, cluster,
-		serdes_unit + (is_tx ? REG_TX_SERDES_CHANMASK : REG_RX_SERDES_CHANMASK),
-		~((u32) mask));
-	mca_poke(mca, cluster,
-		serdes_unit + (is_tx ? REG_TX_SERDES_CHANMASK : REG_RX_SERDES_CHANMASK) + 0x4,
-		~((u32) mask));
 
-	if (!is_tx)
+	if (is_tx) {
+		mca_poke(mca, cluster,
+			serdes_unit + REG_TX_SERDES_CHANMASK,
+			~((u32) mask));
+		mca_poke(mca, cluster,
+			serdes_unit + REG_TX_SERDES_CHANMASK + 0x4,
+			~((u32) mask));
+	} else {
+		mca_poke(mca, cluster,
+			serdes_unit + REG_RX_SERDES_CHANMASK,
+			0xffffffff);
+		mca_poke(mca, cluster,
+			serdes_unit + REG_RX_SERDES_CHANMASK + 0x4,
+			~((u32) mask));
 		mca_poke(mca, cluster,
 			serdes_unit + REG_RX_SERDES_PORT,
 			1 << port);
+	}
 
 	return 0;
 
@@ -468,8 +477,10 @@ static int mca_dai_startup(struct snd_pcm_substream *substream,
 
 	case SNDRV_PCM_STREAM_CAPTURE:
 		mca_modify(mca, route->serdes, CLUSTER_RX_OFF + REG_RX_SERDES_CONF,
-				SERDES_CONF_UNK1 | SERDES_CONF_UNK2,
-				SERDES_CONF_UNK1 | SERDES_CONF_UNK2);
+				SERDES_CONF_UNK1 | SERDES_CONF_UNK2 | SERDES_CONF_UNK3
+				| SERDES_CONF_NO_DATA_FEEDBACK,
+				SERDES_CONF_UNK1 | SERDES_CONF_UNK2
+				| SERDES_CONF_NO_DATA_FEEDBACK);
 		mca_modify(mca, route->serdes, CLUSTER_RX_OFF + REG_RX_SERDES_CONF,
 			SERDES_CONF_SYNC_SEL, FIELD_PREP(SERDES_CONF_SYNC_SEL,
 						route->syncgen + 1));
