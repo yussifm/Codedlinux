@@ -95,7 +95,6 @@ struct apple_dart_hw {
  * @clks: clocks associated with this DART
  * @num_clks: number of @clks
  * @lock: lock for hardware operations involving this dart
- * @pgsize: pagesize supported by this DART
  * @supports_bypass: indicates if this DART supports bypass mode
  * @force_bypass: force bypass mode due to pagesize mismatch?
  * @sid2group: maps stream ids to iommu_groups
@@ -113,7 +112,6 @@ struct apple_dart {
 
 	spinlock_t lock;
 
-	u32 pgsize;
 	u32 supports_bypass : 1;
 	u32 force_bypass : 1;
 
@@ -425,7 +423,7 @@ static int apple_dart_finalize_domain(struct iommu_domain *domain,
 	}
 
 	pgtbl_cfg = (struct io_pgtable_cfg){
-		.pgsize_bitmap = dart->pgsize,
+		.pgsize_bitmap = SZ_16K,
 		.ias = 32,
 		.oas = dart->hw->oas,
 		.coherent_walk = 1,
@@ -632,8 +630,6 @@ static int apple_dart_of_xlate(struct device *dev, struct of_phandle_args *args)
 			return -EINVAL;
 		if (cfg_dart->force_bypass != dart->force_bypass)
 			return -EINVAL;
-		if (cfg_dart->pgsize != dart->pgsize)
-			return -EINVAL;
 	}
 
 	for (i = 0; i < MAX_DARTS_PER_DEVICE; ++i) {
@@ -787,7 +783,7 @@ static const struct iommu_ops apple_dart_iommu_ops = {
 	.def_domain_type = apple_dart_def_domain_type,
 	.get_resv_regions = apple_dart_get_resv_regions,
 	.put_resv_regions = generic_iommu_put_resv_regions,
-	.pgsize_bitmap = -1UL, /* Restricted during dart probe */
+	.pgsize_bitmap = SZ_16K,
 };
 
 static irqreturn_t apple_dart_irq(int irq, void *dev)
@@ -854,6 +850,7 @@ static int apple_dart_probe(struct platform_device *pdev)
 {
 	int ret;
 	u32 dart_params[2];
+	u32 pgsize;
 	struct resource *res;
 	struct apple_dart *dart;
 	const struct of_device_id *match;
@@ -902,9 +899,17 @@ static int apple_dart_probe(struct platform_device *pdev)
 
 	dart_params[0] = readl(dart->regs + DART_PARAMS1);
 	dart_params[1] = readl(dart->regs + DART_PARAMS2);
-	dart->pgsize = 1 << FIELD_GET(DART_PARAMS_PAGE_SHIFT, dart_params[0]);
+	pgsize = 1 << FIELD_GET(DART_PARAMS_PAGE_SHIFT, dart_params[0]);
 	dart->supports_bypass = dart_params[1] & DART_PARAMS_BYPASS_SUPPORT;
-	dart->force_bypass = dart->pgsize > PAGE_SIZE;
+	dart->force_bypass = pgsize > PAGE_SIZE;
+
+	if (pgsize != SZ_16K) {
+		dev_err(&pdev->dev,
+			"only DARTs with 16K pagesize are supported but this one reports 0x%x\n",
+			pgsize);
+		ret = -EINVAL;
+		goto err_clk_disable;
+	}
 
 	ret = request_irq(dart->irq, apple_dart_irq, IRQF_SHARED,
 			  "apple-dart fault handler", dart);
@@ -928,8 +933,8 @@ static int apple_dart_probe(struct platform_device *pdev)
 
 	dev_info(
 		&pdev->dev,
-		"DART [pagesize %x, bypass support: %d, bypass forced: %d] initialized\n",
-		dart->pgsize, dart->supports_bypass, dart->force_bypass);
+		"DART [bypass support: %d, bypass forced: %d] initialized\n",
+		dart->supports_bypass, dart->force_bypass);
 	return 0;
 
 err_sysfs_remove:
