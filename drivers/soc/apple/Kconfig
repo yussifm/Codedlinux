@@ -18,7 +18,7 @@ config APPLE_PMGR_PWRSTATE
 	  generic power domain framework, and also provides reset support.
 
 config APPLE_RTKIT
-	bool "Apple RTKit co-processor IPC protocol"
+	tristate "Apple RTKit co-processor IPC protocol"
 	depends on MAILBOX && (ARCH_APPLE || COMPILE_TEST)
 	default ARCH_APPLE
 	help
