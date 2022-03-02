@@ -236,3 +236,11 @@
 &dwc3_3 {
 	status = "disabled";
 };
+
+/ {
+	gpio-bl {
+		compatible = "gpio-backlight";
+		gpios = <&smc_gpio 19 GPIO_ACTIVE_HIGH>;
+		default-on;
+	};
+};
