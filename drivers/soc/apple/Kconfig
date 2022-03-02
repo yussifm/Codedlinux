@@ -30,7 +30,7 @@ config APPLE_RTKIT
 	  Say 'y' here if you have an Apple SoC.
 
 config APPLE_SART
-	bool "Apple SART DMA address filter"
+	tristate "Apple SART DMA address filter"
 	depends on ARCH_APPLE || COMPILE_TEST
 	default ARCH_APPLE
 	help
