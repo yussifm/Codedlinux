@@ -373,6 +373,7 @@ MODULE_DEVICE_TABLE(of, apple_mbox_of_match);
 static struct platform_driver apple_mbox_driver = {
 	.driver = {
 		.name = "apple-mailbox",
+		.owner = THIS_MODULE,
 		.of_match_table = apple_mbox_of_match,
 	},
 	.probe = apple_mbox_probe,
