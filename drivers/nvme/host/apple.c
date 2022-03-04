@@ -9,7 +9,7 @@
  * Copyright (c) 2015-2016 HGST, a Western Digital Company.
  */
 
-//#define DEBUG
+#define DEBUG
 
 #include <linux/async.h>
 #include <linux/blkdev.h>
@@ -252,7 +252,7 @@ static void apple_nvme_rtkit_recv(void *cookie, u8 endpoint, u64 message)
 {
 	struct apple_nvme *anv = cookie;
 
-	dev_warn(anv->dev, "Recevied unexpected message to EP%02d: %llx",
+	dev_warn(anv->dev, "Received unexpected message to EP%02d: %llx",
 		 endpoint, message);
 }
 
@@ -848,6 +848,8 @@ static void apple_nvme_disable(struct apple_nvme *anv, bool shutdown)
 	if (csts & NVME_CSTS_CFS)
 		dead = true;
 
+	printk("freeze\n");
+
 	if (anv->ctrl.state == NVME_CTRL_LIVE ||
 	    anv->ctrl.state == NVME_CTRL_RESETTING) {
 		freeze = true;
@@ -858,34 +860,40 @@ static void apple_nvme_disable(struct apple_nvme *anv, bool shutdown)
 	 * Give the controller a chance to complete all entered requests if
 	 * doing a safe shutdown.
 	 */
+	printk("wait freeze\n");
 	if (!dead && shutdown && freeze)
 		nvme_wait_freeze_timeout(&anv->ctrl, NVME_IO_TIMEOUT);
 
+	printk("stopq\n");
 	nvme_stop_queues(&anv->ctrl);
 
 	if (!dead) {
+		printk("!dead remove\n");
 		if (READ_ONCE(anv->ioq.enabled)) {
 			apple_nvme_remove_sq(anv);
 			apple_nvme_remove_cq(anv);
 		}
 
+		printk("sd\n");
 		if (shutdown)
 			nvme_shutdown_ctrl(&anv->ctrl);
-		else
-			nvme_disable_ctrl(&anv->ctrl);
+		nvme_disable_ctrl(&anv->ctrl);
 	}
 
 	WRITE_ONCE(anv->ioq.enabled, false);
 	WRITE_ONCE(anv->adminq.enabled, false);
 	mb(); /* ensure that nvme_queue_rq() sees that enabled is cleared */
+	printk("saq\n");
 	nvme_stop_admin_queue(&anv->ctrl);
 
 	/* last chance to complete any requests before nvme_cancel_request */
+	printk("handle\n");
 	spin_lock_irqsave(&anv->lock, flags);
 	apple_nvme_handle_cq(&anv->ioq, true);
 	apple_nvme_handle_cq(&anv->adminq, true);
 	spin_unlock_irqrestore(&anv->lock, flags);
 
+	printk("bmq\n");
 	blk_mq_tagset_busy_iter(&anv->tagset, nvme_cancel_request, &anv->ctrl);
 	blk_mq_tagset_busy_iter(&anv->admin_tagset, nvme_cancel_request,
 				&anv->ctrl);
@@ -898,6 +906,7 @@ static void apple_nvme_disable(struct apple_nvme *anv, bool shutdown)
 	 * deadlocking blk-mq hot-cpu notifier.
 	 */
 	if (shutdown) {
+		printk("sd sq\n");
 		nvme_start_queues(&anv->ctrl);
 		nvme_start_admin_queue(&anv->ctrl);
 		blk_cleanup_queue(anv->ctrl.admin_q);
@@ -1017,6 +1026,8 @@ static void apple_nvme_reset_work(struct work_struct *work)
 	struct apple_nvme *anv =
 		container_of(work, struct apple_nvme, ctrl.reset_work);
 
+	printk("apple_nvme_reset_work\n");
+
 	if (anv->ctrl.state != NVME_CTRL_RESETTING) {
 		dev_warn(anv->dev, "ctrl state %d is not RESETTING\n",
 			 anv->ctrl.state);
@@ -1032,8 +1043,12 @@ static void apple_nvme_reset_work(struct work_struct *work)
 		goto out;
 	}
 
+	printk("apple_nvme_reset_work 1\n");
+
 	if (anv->ctrl.ctrl_config & NVME_CC_ENABLE)
 		apple_nvme_disable(anv, false);
+
+	printk("apple_nvme_reset_work 2\n");
 
 	/* RTKit must be shut down cleanly for the (soft)-reset to work */
 	if (apple_rtkit_is_running(anv->rtk)) {
@@ -1042,6 +1057,8 @@ static void apple_nvme_reset_work(struct work_struct *work)
 		if (ret)
 			goto out;
 	}
+
+	printk("apple_nvme_reset_work 3\n");
 
 	writel_relaxed(0, anv->mmio_coproc + APPLE_ANS_COPROC_CPU_CONTROL);
 	(void)readl_relaxed(anv->mmio_coproc + APPLE_ANS_COPROC_CPU_CONTROL);
@@ -1058,6 +1075,8 @@ static void apple_nvme_reset_work(struct work_struct *work)
 	if (ret)
 		goto out;
 
+	printk("apple_nvme_reset_work 4\n");
+
 	writel_relaxed(APPLE_ANS_COPROC_CPU_CONTROL_RUN,
 		       anv->mmio_coproc + APPLE_ANS_COPROC_CPU_CONTROL);
 	(void)readl_relaxed(anv->mmio_coproc + APPLE_ANS_COPROC_CPU_CONTROL);
@@ -1066,6 +1085,8 @@ static void apple_nvme_reset_work(struct work_struct *work)
 		dev_err(anv->dev, "ANS did not boot");
 		goto out;
 	}
+
+	printk("apple_nvme_reset_work 5\n");
 
 	ret = readl_relaxed_poll_timeout(
 		anv->mmio_nvme + APPLE_ANS_BOOT_STATUS, boot_status,
@@ -1077,6 +1098,8 @@ static void apple_nvme_reset_work(struct work_struct *work)
 	}
 
 	dev_dbg(anv->dev, "ANS booted succesfully.");
+	printk("apple_nvme_reset_work 6\n");
+
 
 	/*
 	 * Limit the max command size to prevent iod->sg allocations going
@@ -1573,6 +1596,44 @@ static void apple_nvme_shutdown(struct platform_device *pdev)
 		apple_rtkit_shutdown(anv->rtk);
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int apple_nvme_resume(struct device *dev)
+{
+	struct apple_nvme *anv = dev_get_drvdata(dev);
+	int ret;
+
+	printk("apple_nvme_resume()\n");
+
+	ret = nvme_reset_ctrl(&anv->ctrl);
+	printk("apple_nvme_resume() ret %d\n", ret);
+
+	return ret;
+}
+
+static int apple_nvme_suspend(struct device *dev)
+{
+	struct apple_nvme *anv = dev_get_drvdata(dev);
+	int ret = 0;
+
+	printk("apple_nvme_suspend()\n");
+	flush_delayed_work(&anv->flush_dwork);
+	apple_nvme_disable(anv, true);
+
+	if (apple_rtkit_is_running(anv->rtk))
+		ret = apple_rtkit_shutdown(anv->rtk);
+
+	writel_relaxed(0, anv->mmio_coproc + APPLE_ANS_COPROC_CPU_CONTROL);
+	(void)readl_relaxed(anv->mmio_coproc + APPLE_ANS_COPROC_CPU_CONTROL);
+
+	return ret;
+}
+
+static const struct dev_pm_ops apple_nvme_pm_ops = {
+	.suspend	= apple_nvme_suspend,
+	.resume		= apple_nvme_resume,
+};
+#endif
+
 static const struct of_device_id apple_nvme_of_match[] = {
 	{ .compatible = "apple,nvme-ans2" },
 	{},
@@ -1583,6 +1644,9 @@ static struct platform_driver apple_nvme_driver = {
  	.driver = {
  		.name = "nvme-apple",
  		.of_match_table = apple_nvme_of_match,
+#ifdef CONFIG_PM_SLEEP
+		.pm = &apple_nvme_pm_ops,
+#endif
  	},
  	.probe = apple_nvme_probe,
 	.remove = apple_nvme_remove,
