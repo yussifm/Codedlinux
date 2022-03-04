@@ -26,6 +26,7 @@
 			compatible = "apple,simple-framebuffer", "simple-framebuffer";
 			reg = <0 0 0 0>; /* To be filled by loader */
 			/* Format properties will be added by loader */
+			backlight = <&backlight>;
 			status = "disabled";
 		};
 	};
@@ -238,7 +239,7 @@
 };
 
 / {
-	gpio-bl {
+	backlight: gpio-bl {
 		compatible = "gpio-backlight";
 		gpios = <&smc_gpio 19 GPIO_ACTIVE_HIGH>;
 		default-on;
