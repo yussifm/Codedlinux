@@ -909,7 +909,7 @@ static void apple_nvme_disable(struct apple_nvme *anv, bool shutdown)
 		printk("sd sq\n");
 		nvme_start_queues(&anv->ctrl);
 		nvme_start_admin_queue(&anv->ctrl);
-		blk_cleanup_queue(anv->ctrl.admin_q);
+		//blk_cleanup_queue(anv->ctrl.admin_q);
 	}
 }
 
