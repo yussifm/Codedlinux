@@ -2012,6 +2012,11 @@ static int __iommu_attach_device(struct iommu_domain *domain,
 		!(domain->type & __IOMMU_DOMAIN_LP) &&
 		!(domain->pgsize_bitmap & (PAGE_SIZE | (PAGE_SIZE - 1))));
 
+
+	// HACK: fix swiotlb so that this isn't required
+	BUG_ON((domain->type & __IOMMU_DOMAIN_PAGING) &&
+		dev_is_pci(dev) && to_pci_dev(dev)->untrusted &&
+		!(domain->pgsize_bitmap & (PAGE_SIZE | (PAGE_SIZE - 1))));
 	return ret;
 }
 
