@@ -469,8 +469,8 @@ static int nvmem_cell_info_to_nvmem_cell_entry_nodup(struct nvmem_device *nvmem,
 	cell->nbits = info->nbits;
 
 	if (cell->nbits)
-		cell->bytes = DIV_ROUND_UP(cell->nbits + cell->bit_offset,
-					   BITS_PER_BYTE);
+		cell->bytes = round_up(DIV_ROUND_UP(cell->nbits + cell->bit_offset,
+					   BITS_PER_BYTE), nvmem->word_size);
 
 	if (!IS_ALIGNED(cell->offset, nvmem->stride)) {
 		dev_err(&nvmem->dev,
@@ -717,9 +717,9 @@ static int nvmem_add_cells_from_of(struct nvmem_device *nvmem)
 		}
 
 		if (cell->nbits)
-			cell->bytes = DIV_ROUND_UP(
+			cell->bytes = round_up(DIV_ROUND_UP(
 					cell->nbits + cell->bit_offset,
-					BITS_PER_BYTE);
+					BITS_PER_BYTE), nvmem->word_size);
 
 		if (!IS_ALIGNED(cell->offset, nvmem->stride)) {
 			dev_err(dev, "cell %s unaligned to nvmem stride %d\n",
