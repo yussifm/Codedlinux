@@ -239,6 +239,7 @@
 	max-link-speed = <1>;
 	pwren-gpios = <&smc_gpio 26 GPIO_ACTIVE_HIGH>;
 	sdhci0: mmc@0,0 {
+		compatible = "pci17a0,9755";
 		reg = <0x20000 0x0 0x0 0x0 0x0>;
 		cd-inverted;
 		wp-inverted;
