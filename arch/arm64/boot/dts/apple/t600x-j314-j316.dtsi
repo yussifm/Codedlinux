@@ -241,6 +241,7 @@
 	sdhci0: mmc@0,0 {
 		compatible = "pci17a0,9755";
 		reg = <0x20000 0x0 0x0 0x0 0x0>;
+		cd-gpios = <&smc_gpio 7 GPIO_ACTIVE_HIGH>;
 		cd-inverted;
 		wp-inverted;
 	};
