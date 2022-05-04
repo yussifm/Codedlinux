@@ -5,6 +5,7 @@
  */
 
 #include <asm/unaligned.h>
+#include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/io.h>
 #include <linux/ioport.h>
@@ -33,7 +34,6 @@
 #define SMC_MSG				GENMASK(7, 0)
 #define SMC_RESULT			SMC_MSG
 
-#define SMC_SEND_TIMEOUT		100
 #define SMC_RECV_TIMEOUT		100
 
 struct apple_smc_rtkit {
@@ -77,9 +77,9 @@ static int apple_smc_rtkit_write_key_atomic(void *cookie, smc_key key, void *buf
 	       FIELD_PREP(SMC_DATA, key));
 	smc->atomic_pending = true;
 
-	ret = apple_rtkit_send_message_wait(smc->rtk, SMC_ENDPOINT, msg, 100, true);
+	ret = apple_rtkit_send_message(smc->rtk, SMC_ENDPOINT, msg, NULL, true);
 	if (ret < 0) {
-		dev_err(smc->dev, "Failed to send command\n");
+		dev_err(smc->dev, "Failed to send command (%d)\n", ret);
 		return ret;
 	}
 
@@ -89,6 +89,7 @@ static int apple_smc_rtkit_write_key_atomic(void *cookie, smc_key key, void *buf
 			dev_err(smc->dev, "RTKit poll failed (%llx)", msg);
 			return ret;
 		}
+		udelay(100);
 	}
 
 	if (FIELD_GET(SMC_ID, smc->cmd_ret) != smc->msg_id) {
@@ -123,7 +124,7 @@ static int apple_smc_cmd(struct apple_smc_rtkit *smc, u64 cmd, u64 arg,
 	       FIELD_PREP(SMC_ID, smc->msg_id) |
 	       FIELD_PREP(SMC_DATA, arg));
 
-	ret = apple_rtkit_send_message_wait(smc->rtk, SMC_ENDPOINT, msg, SMC_SEND_TIMEOUT, false);
+	ret = apple_rtkit_send_message(smc->rtk, SMC_ENDPOINT, msg, NULL, false);
 	if (ret < 0) {
 		dev_err(smc->dev, "Failed to send command\n");
 		return ret;
@@ -380,9 +381,8 @@ static int apple_smc_rtkit_probe(struct platform_device *pdev)
 	init_completion(&smc->init_done);
 	init_completion(&smc->cmd_done);
 
-	ret = apple_rtkit_send_message_wait(smc->rtk, SMC_ENDPOINT,
-					    FIELD_PREP(SMC_MSG, SMC_MSG_INITIALIZE),
-					    SMC_SEND_TIMEOUT, false);
+	ret = apple_rtkit_send_message(smc->rtk, SMC_ENDPOINT,
+				       FIELD_PREP(SMC_MSG, SMC_MSG_INITIALIZE), NULL, false);
 	if (ret < 0)
 		return dev_err_probe(dev, ret,
 				     "Failed to send init message");
