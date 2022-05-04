@@ -71,7 +71,15 @@ int apple_smc_write_atomic(struct apple_smc *smc, smc_key key, void *buf, size_t
 {
 	int ret;
 
+	/*
+	 * Will fail if SMC is busy. This is only used by SMC reboot/poweroff
+	 * final calls, so it doesn't really matter at that point.
+	 */
+	if (!mutex_trylock(&smc->mutex))
+		return -EBUSY;
+
 	ret = smc->be->write_key_atomic(smc->be_cookie, key, buf, size);
+	mutex_unlock(&smc->mutex);
 
 	return ret;
 }
@@ -194,7 +202,7 @@ struct apple_smc *apple_smc_probe(struct device *dev, const struct apple_smc_bac
 	smc->be_cookie = cookie;
 	smc->be = ops;
 	mutex_init(&smc->mutex);
-	RAW_INIT_NOTIFIER_HEAD(&smc->event_handlers);
+	BLOCKING_INIT_NOTIFIER_HEAD(&smc->event_handlers);
 
 	ret = apple_smc_read_u32(smc, SMC_KEY(#KEY), &count);
 	if (ret)
