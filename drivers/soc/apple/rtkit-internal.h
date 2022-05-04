@@ -18,6 +18,7 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/soc/apple/rtkit.h>
+#include <linux/spinlock.h>
 #include <linux/workqueue.h>
 
 #define APPLE_RTKIT_APP_ENDPOINT_START 0x20
@@ -32,6 +33,7 @@ struct apple_rtkit {
 	int mbox_idx;
 	struct mbox_client mbox_cl;
 	struct mbox_chan *mbox_chan;
+	spinlock_t send_lock;
 
 	struct completion epmap_completion;
 	struct completion iop_pwr_ack_completion;
