@@ -591,7 +591,6 @@ int apple_rtkit_send_message(struct apple_rtkit *rtk, u8 ep, u64 message,
 	struct apple_rtkit_msg *msg;
 	int ret;
 	gfp_t flags;
-	unsigned long iflags;
 
 	if (rtk->crashed)
 		return -EINVAL;
@@ -619,10 +618,7 @@ int apple_rtkit_send_message(struct apple_rtkit *rtk, u8 ep, u64 message,
 	 */
 	dma_wmb();
 
-	spin_lock_irqsave(&rtk->send_lock, iflags);
 	ret = mbox_send_message(rtk->mbox_chan, &msg->mbox_msg);
-	spin_unlock_irqrestore(&rtk->send_lock, iflags);
-
 	if (ret < 0) {
 		kfree(msg);
 		return ret;
@@ -702,7 +698,6 @@ static struct apple_rtkit *apple_rtkit_init(struct device *dev, void *cookie,
 	rtk->mbox_cl.knows_txdone = false;
 	rtk->mbox_cl.rx_callback = &apple_rtkit_rx;
 	rtk->mbox_cl.tx_done = &apple_rtkit_tx_done;
-	spin_lock_init(&rtk->send_lock);
 
 	rtk->wq = alloc_ordered_workqueue("rtkit-%s", WQ_MEM_RECLAIM,
 					  dev_name(rtk->dev));
